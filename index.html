@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+
+  <style>
+
+    * {
+      font-family: Arial, Helvetica, sans-serif;
+      color: #1f1f1f;
+    }
+
+    html, body {
+      background-color: ghostwhite;
+    }
+
+    main {
+      max-width: 800px;
+      margin: auto;
+      padding: 34px;
+    }
+
+    h1 {
+      font-size: 34px;
+    }
+
+    a, p {
+      font-size: 16px;
+      line-height: 24px;
+    }
+
+    #article-wrapper a {
+      display: block
+    }
+
+  </style>
+
+</head>
+<body>
+
+  <script>
+
+    const createEle = (type, text, parent) => {
+      const _ele = document.createElement(type);
+      _ele.innerHTML = text;
+      parent.appendChild(_ele);
+      return _ele;
+    }
+
+    const handleRenderArticleList = () => {
+      const main = document.getElementById('main')
+      main.innerHTML = ''
+
+      const articleListWrapper = createEle('div', null, main)
+      articleListWrapper.id = "article-wrapper"
+      
+      page.articles.forEach(article => {        
+        const articleTitle = `[${article.category}] ${article.title !== "" ? article.title : "[Sin Título]"}` 
+        const _a = createEle('a', articleTitle, articleListWrapper);
+        const {origin, pathname} = window.location
+        _a.href = `${origin}${pathname}?articleId=${article.id}`
+      }) 
+    }
+
+    const handleRenderArticle = (article) => {
+      const main = document.getElementById('main')
+      main.innerHTML = ''
+
+      const {origin, pathname} = window.location
+      const _backButton = createEle('a', 'Back', main);
+      _backButton.href = `${origin}${pathname}`
+
+      const _h1 = createEle('h1', article.title !== "" ? article.title : "[Sin Título]", main);
+      article.article.paragraphs.forEach(p => createEle('p', p, main)); 
+    }
+
+    const handleRender = () => {
+
+      const articleId = new URL(window.location).searchParams.get('articleId');
+      if (articleId) {
+        const activeArticle = page.articles.find(a => a.id === articleId);
+        console.log({activeArticle})
+        if (!activeArticle) return handleRenderArticleList();
+        return handleRenderArticle(activeArticle);
+      } else {
+        return handleRenderArticleList();
+      }
+    }
+
+    const page = {
+      render: handleRender,
+      articles: null, 
+      setArticles: function(_articles) {
+        this.articles = _articles;
+        this.render()
+      } 
+    }
+
+    const handleWindowLoad = () => {
+      fetch("./data.json")
+        .then(response => response.json())
+        .then(json => page.setArticles(json));
+    }
+
+    window.addEventListener('DOMContentLoaded', handleWindowLoad);
+
+  </script>
+
+  <main id="main">
+
+  </main>
+  
+</body>
+</html>
