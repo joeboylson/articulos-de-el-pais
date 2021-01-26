@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Document</title>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.20/lodash.min.js"></script>
+
   <style>
 
     * {
@@ -17,13 +19,13 @@
     }
 
     main {
-      max-width: 800px;
+      max-width: 1200px;
       margin: auto;
-      padding: 34px;
+      padding: 36px;
     }
 
     h1 {
-      font-size: 34px;
+      font-size: 36px;
     }
 
     a, p {
@@ -31,8 +33,39 @@
       line-height: 24px;
     }
 
-    #article-wrapper a {
-      display: block
+    #article-list-wrapper {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+
+    .article-block {
+      display: flex;
+      flex-direction: column;
+      background-color: #f4f4f4;
+      padding: 12px;
+    }
+
+    .article-tag {
+      margin-bottom: 12px;
+      font-size: 12px;
+      color: #014afe;
+    }
+
+    .title-link {
+      font-weight: bold;
+    }
+
+    @media screen and (max-width: 1000px) {
+      #article-list-wrapper {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media screen and (max-width: 650px) {
+      #article-list-wrapper {
+        grid-template-columns: repeat(1, 1fr);
+      }
     }
 
   </style>
@@ -41,6 +74,15 @@
 <body>
 
   <script>
+
+    const capitalize = (s) => {
+      if (typeof s !== 'string') return ''
+
+      const items = s.split('-')
+      const capitalizedItems = items.map(i => i.charAt(0).toUpperCase() + i.slice(1));
+
+      return capitalizedItems.join(" ");
+    }
 
     const createEle = (type, text, parent) => {
       const _ele = document.createElement(type);
@@ -54,13 +96,25 @@
       main.innerHTML = ''
 
       const articleListWrapper = createEle('div', null, main)
-      articleListWrapper.id = "article-wrapper"
+      articleListWrapper.id = "article-list-wrapper"
       
-      page.articles.forEach(article => {        
-        const articleTitle = `[${article.category}] ${article.title !== "" ? article.title : "[Sin Título]"}` 
-        const _a = createEle('a', articleTitle, articleListWrapper);
+      _.sortBy(page.articles, 'category').forEach(article => {
+
+        if (article.title == "") return;
+
+        // article block
+        const articleBlock = createEle('div', null, articleListWrapper);
+        articleBlock.classList.add('article-block') 
+
+        // article tag
+        const tag = createEle('span', capitalize(article.category), articleBlock);
+        tag.classList.add('article-tag');
+
+        const titleLink = createEle('a', article.title, articleBlock);
+        titleLink.classList.add('title-link');
+
         const {origin, pathname} = window.location
-        _a.href = `${origin}${pathname}?articleId=${article.id}`
+        titleLink.href = `${origin}${pathname}?articleId=${article.id}`
       }) 
     }
 
@@ -68,11 +122,13 @@
       const main = document.getElementById('main')
       main.innerHTML = ''
 
+      if (article.title == "") return;
+
       const {origin, pathname} = window.location
       const _backButton = createEle('a', 'Back', main);
       _backButton.href = `${origin}${pathname}`
 
-      const _h1 = createEle('h1', article.title !== "" ? article.title : "[Sin Título]", main);
+      const _h1 = createEle('h1', article.title, main);
       article.article.paragraphs.forEach(p => createEle('p', p, main)); 
     }
 
@@ -81,7 +137,6 @@
       const articleId = new URL(window.location).searchParams.get('articleId');
       if (articleId) {
         const activeArticle = page.articles.find(a => a.id === articleId);
-        console.log({activeArticle})
         if (!activeArticle) return handleRenderArticleList();
         return handleRenderArticle(activeArticle);
       } else {
