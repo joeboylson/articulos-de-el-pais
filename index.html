@@ -33,6 +33,23 @@
       line-height: 24px;
     }
 
+    #category-list {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      column-gap: 24px;
+      padding-bottom: 48px;
+      border-bottom: 1px solid black;
+      margin-bottom: 48px;
+    }
+
+    .category-link {
+      white-space: nowrap;
+    }
+
+    .category-link.active {
+      color: #014afe;
+    }
+
     #article-list-wrapper {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -62,7 +79,36 @@
       }
     }
 
+    @media screen and (max-width: 800px) {
+
+      main {
+        padding: 24px;
+      }
+
+      #category-list {
+        grid-template-columns: repeat(2, 1fr);
+        column-gap: 12px;
+        padding-bottom: 24px;
+        margin-bottom: 24px;
+      }
+
+      #article-list-wrapper {
+        gap: 12px;
+      }
+    }
+
+
     @media screen and (max-width: 650px) {
+
+      main {
+        padding: 6px;
+      }
+
+      #category-list {
+        padding-bottom: 12px;
+        margin-bottom: 12px;
+      }
+
       #article-list-wrapper {
         grid-template-columns: repeat(1, 1fr);
       }
@@ -91,15 +137,47 @@
       return _ele;
     }
 
+    const getUrlParams = () => {
+      const articleId = new URL(window.location).searchParams.get('articleId');
+      const category = new URL(window.location).searchParams.get('category');
+      return [articleId, category];
+    }
+
     const handleRenderArticleList = () => {
+      const [articleId, category] = getUrlParams();
+      const {origin, pathname} = window.location
+
       const main = document.getElementById('main')
       main.innerHTML = ''
 
+      // category list
+      const categoryList = createEle('div', null, main)
+      categoryList.id = "category-list";
+
+      // no category link
+      const noCategoryLink = createEle('a', "* Todas", categoryList);
+      noCategoryLink.classList.add('category-link');
+      if (!category) noCategoryLink.classList.add('active');
+      noCategoryLink.href = `${origin}${pathname}`
+
+      // category items
+      _.sortBy(page.categories).forEach(_category => {
+        const categoryLink = createEle('a', capitalize(_category), categoryList);
+        categoryLink.classList.add('category-link');
+        if (_category === category) categoryLink.classList.add('active');
+        categoryLink.href = `${origin}${pathname}?category=${_category}`
+      });
+
+      // article list wrapper
       const articleListWrapper = createEle('div', null, main)
       articleListWrapper.id = "article-list-wrapper"
-      
-      _.sortBy(page.articles, 'category').forEach(article => {
 
+      // filter by category -OR- order by category
+      const _articles = category ?
+        page.articles.filter(a => a.category === category) : 
+        _.sortBy(page.articles, 'category')
+      
+      _articles.forEach(article => {
         if (article.title == "") return;
 
         // article block
@@ -110,15 +188,18 @@
         const tag = createEle('span', capitalize(article.category), articleBlock);
         tag.classList.add('article-tag');
 
+        // title link
         const titleLink = createEle('a', article.title, articleBlock);
         titleLink.classList.add('title-link');
-
-        const {origin, pathname} = window.location
         titleLink.href = `${origin}${pathname}?articleId=${article.id}`
       }) 
     }
 
-    const handleRenderArticle = (article) => {
+    const handleRenderArticle = () => {
+      const [articleId] = getUrlParams();
+      const article = page.articles.find(a => a.id === articleId);
+      if (!article) return handleRenderArticleList();
+
       const main = document.getElementById('main')
       main.innerHTML = ''
 
@@ -133,30 +214,30 @@
     }
 
     const handleRender = () => {
-
-      const articleId = new URL(window.location).searchParams.get('articleId');
-      if (articleId) {
-        const activeArticle = page.articles.find(a => a.id === articleId);
-        if (!activeArticle) return handleRenderArticleList();
-        return handleRenderArticle(activeArticle);
-      } else {
-        return handleRenderArticleList();
-      }
+      const [articleId] = getUrlParams();
+      articleId ? handleRenderArticle() : handleRenderArticleList();
     }
 
     const page = {
       render: handleRender,
       articles: null, 
+      categories: null,
       setArticles: function(_articles) {
         this.articles = _articles;
-        this.render()
-      } 
+      },
+      setCategories: function(_categories) {
+        this.categories = _categories
+      }
     }
 
     const handleWindowLoad = () => {
       fetch("./data.json")
         .then(response => response.json())
-        .then(json => page.setArticles(json));
+        .then(json => {
+          page.setCategories( Array.from( new Set( json.map(i => i.category) ) ) );
+          page.setArticles(json);
+          page.render()
+        });
     }
 
     window.addEventListener('DOMContentLoaded', handleWindowLoad);
